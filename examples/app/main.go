@@ -40,6 +40,7 @@ func PrintVersion(v *application.Version) error {
 }
 
 func main() {
+	var err error
 	root := &cobra.Command{
 		Use:               "app",
 		Short:             "App Short",
@@ -56,7 +57,11 @@ func main() {
 	version.SetRun(PrintVersion)
 
 	app := application.NewApplication(root, version)
-	if err := app.Run(); err != nil {
+	if err = app.RegisterEnvironment("EXAMPLE", []string{"KEY"}); err != nil {
+		panic(err)
+	}
+
+	if err = app.Run(); err != nil {
 		fmt.Println(err)
 	}
 }
