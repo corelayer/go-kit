@@ -1,2 +1,3 @@
 # go-kit
-CoreLayer Standard Library
+
+Standard Go Toolset for applications
