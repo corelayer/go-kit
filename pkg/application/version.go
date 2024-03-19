@@ -17,6 +17,8 @@
 package application
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 )
 
@@ -24,18 +26,19 @@ type Version struct {
 	SemVer string
 	Commit string
 	Date   string
-	runE   func(v *Version) error
-}
-
-func (v *Version) SetRun(f func(v *Version) error) {
-	v.runE = f
+	RunE   func(v *Version) error
 }
 
 func (v *Version) Command() *cobra.Command {
 	return &cobra.Command{
-		Use: "version",
+		Use:   "version",
+		Short: "Show version information",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return v.runE(v)
+			return v.RunE(v)
 		},
 	}
+}
+
+func (v *Version) String() string {
+	return fmt.Sprintf("%s-%s", v.SemVer, v.Commit)
 }

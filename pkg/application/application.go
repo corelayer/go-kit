@@ -26,12 +26,11 @@ import (
 var Config Configuration
 
 func NewApplication(c *cobra.Command, v Version) *Application {
-	if v.runE != nil {
+	if v.RunE != nil {
 		c.AddCommand(v.Command())
-	}
-
-	if c.Version != "" {
 		c.Version = ""
+	} else {
+		c.Version = v.String()
 	}
 
 	return &Application{
