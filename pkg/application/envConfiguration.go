@@ -17,18 +17,17 @@
 package application
 
 import (
-	"fmt"
-
 	"github.com/spf13/viper"
 )
 
-func NewEnvConfiguration(prefix string, keys []string) EnvConfiguration {
-	output := EnvConfiguration{
+func NewEnvConfiguration(prefix string, keys []string) (EnvConfiguration, error) {
+	if len(keys) == 0 {
+		return EnvConfiguration{}, ErrEnvConfigurationIsEmpty
+	}
+	return EnvConfiguration{
 		prefix: prefix,
 		keys:   keys,
-	}
-
-	return output
+	}, nil
 }
 
 type EnvConfiguration struct {
@@ -43,7 +42,7 @@ func (e EnvConfiguration) GetViper() (*viper.Viper, error) {
 	)
 
 	if !e.HasKeys() {
-		return nil, fmt.Errorf("environment does not define keys")
+		return nil, ErrEnvConfigurationIsEmpty
 	}
 
 	v = viper.New()

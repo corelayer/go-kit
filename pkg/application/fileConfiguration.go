@@ -55,11 +55,7 @@ type FileConfiguration struct {
 }
 
 func (c FileConfiguration) GetViper() (*viper.Viper, error) {
-	var (
-		err error
-		v   *viper.Viper
-	)
-	v = viper.New()
+	v := viper.New()
 
 	// If a full path is specified, set the config file to that path
 	if c.path != "" {
@@ -74,8 +70,7 @@ func (c FileConfiguration) GetViper() (*viper.Viper, error) {
 			v.AddConfigPath(path)
 		}
 	}
-	err = v.ReadInConfig()
-	return v, err
+	return v, v.ReadInConfig()
 }
 
 func (c FileConfiguration) getViperConfig() (string, string) {

@@ -17,13 +17,11 @@
 package application
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
-var Config Configuration
+var Config *Configuration
 
 func NewApplication(c *cobra.Command, v Version) *Application {
 	if v.RunE != nil {
@@ -51,9 +49,8 @@ func (a *Application) RegisterEnvironment(prefix string, keys []string) error {
 		eViper  *viper.Viper
 	)
 
-	eConfig = NewEnvConfiguration(prefix, keys)
-	if !eConfig.HasKeys() {
-		return fmt.Errorf("environment does not define keys")
+	if eConfig, err = NewEnvConfiguration(prefix, keys); err != nil {
+		return err
 	}
 
 	if eViper, err = eConfig.GetViper(); err != nil {
@@ -68,15 +65,13 @@ func (a *Application) RegisterCommands(c []Commander, f func(cmd *cobra.Command)
 	}
 }
 
-// RegisterConfiguration TODO Add flags to cobra command for dynamic configuration name
-// RegisterConfiguration TODO Add custom error type?
 func (a *Application) RegisterConfiguration(name string, filename string, searchPaths []string) error {
 	var (
 		err    error
 		fViper *viper.Viper
 	)
 	if Config.FileExists(name) {
-		return fmt.Errorf("config name already exists")
+		return ErrFileConfigurationExists
 	}
 	c := NewFileConfiguration(filename, searchPaths)
 	if fViper, err = c.GetViper(); err != nil {

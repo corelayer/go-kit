@@ -17,14 +17,13 @@
 package application
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/spf13/viper"
 )
 
-func NewConfiguration() Configuration {
-	return Configuration{
+func NewConfiguration() *Configuration {
+	return &Configuration{
 		files: make(map[string]*viper.Viper),
 		mux:   sync.Mutex{},
 	}
@@ -41,14 +40,14 @@ func (c *Configuration) GetEnv() (*viper.Viper, error) {
 	defer c.mux.Unlock()
 
 	if c.env == nil {
-		return nil, fmt.Errorf("environment not loaded")
+		return nil, ErrEnvConfigurationNotLoaded
 	}
 	return c.env, nil
 }
 
 func (c *Configuration) GetFile(name string) (*viper.Viper, error) {
 	if !c.FileExists(name) {
-		return nil, fmt.Errorf("could not find config name")
+		return nil, ErrFileConfigurationNotFound
 	}
 	c.mux.Lock()
 	defer c.mux.Unlock()
@@ -57,7 +56,7 @@ func (c *Configuration) GetFile(name string) (*viper.Viper, error) {
 
 func (c *Configuration) SetEnvironment(v *viper.Viper) error {
 	if c.env != nil {
-		return fmt.Errorf("environment already loaded")
+		return ErrEnvConfigurationAlreadyLoaded
 	}
 	c.mux.Lock()
 	defer c.mux.Unlock()
@@ -67,7 +66,7 @@ func (c *Configuration) SetEnvironment(v *viper.Viper) error {
 
 func (c *Configuration) SetFile(name string, v *viper.Viper) error {
 	if c.FileExists(name) {
-		return fmt.Errorf("config name exists")
+		return ErrFileConfigurationExists
 	}
 	c.mux.Lock()
 	defer c.mux.Unlock()

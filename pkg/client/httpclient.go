@@ -17,7 +17,6 @@
 package client
 
 import (
-	"log/slog"
 	"net/http"
 	"time"
 )
@@ -36,7 +35,6 @@ func checkRedirect(state bool) func(req *http.Request, via []*http.Request) erro
 	case true:
 		return nil
 	case false:
-		slog.Debug("disable http redirects for http client")
 		return doNotFollowHttpRedirects
 	default:
 		return nil
@@ -45,6 +43,5 @@ func checkRedirect(state bool) func(req *http.Request, via []*http.Request) erro
 
 // DoNotFollowHttpRedirects information at https://go.dev/src/net/http/client.go - line 72
 func doNotFollowHttpRedirects(req *http.Request, via []*http.Request) error {
-	slog.Debug("do not follow redirect", "url", req.URL)
 	return http.ErrUseLastResponse
 }
