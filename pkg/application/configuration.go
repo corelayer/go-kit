@@ -17,6 +17,8 @@
 package application
 
 import (
+	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/spf13/viper"
@@ -54,6 +56,16 @@ func RegisterConfiguration(name string, filename string, searchPaths []string) e
 		return err
 	}
 	return Config.SetFile(name, fViper)
+}
+
+type ConfigFileFlags struct {
+	Name  string
+	Paths []string
+}
+
+type ConfigFileParams struct {
+	File  StringVar
+	Paths StringSliceVar
 }
 
 func NewConfiguration() *Configuration {
@@ -114,4 +126,124 @@ func (c *Configuration) FileExists(name string) bool {
 	defer c.mux.Unlock()
 	_, found := c.files[name]
 	return found
+}
+
+func NewEnvConfiguration(prefix string, keys []string) (EnvConfiguration, error) {
+	if len(keys) == 0 {
+		return EnvConfiguration{}, ErrEnvConfigurationIsEmpty
+	}
+	return EnvConfiguration{
+		prefix: prefix,
+		keys:   keys,
+	}, nil
+}
+
+type EnvConfiguration struct {
+	prefix string
+	keys   []string
+}
+
+func (e EnvConfiguration) GetViper() (*viper.Viper, error) {
+	var (
+		err error
+		v   *viper.Viper
+	)
+
+	if !e.HasKeys() {
+		return nil, ErrEnvConfigurationIsEmpty
+	}
+
+	v = viper.New()
+	v.SetEnvPrefix(e.prefix)
+
+	for _, k := range e.keys {
+		err = v.BindEnv(k)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return v, nil
+}
+
+func (e EnvConfiguration) HasKeys() bool {
+	if len(e.keys) == 0 {
+		return false
+	}
+	return true
+}
+
+func (e EnvConfiguration) Keys() []string {
+	return e.keys
+}
+
+func (e EnvConfiguration) Prefix() string {
+	return e.prefix
+}
+
+func NewFileConfiguration(file string, searchPaths []string) FileConfiguration {
+	// Clean search paths
+	paths := make([]string, 0)
+	for _, p := range searchPaths {
+		if !strings.Contains(p, "..") {
+			paths = append(paths, filepath.Clean(p))
+		}
+	}
+
+	// Split file into path and filename
+	path, filename := filepath.Split(file)
+
+	// Make sure to clean path, this also causes the path to either be "." or a full path
+	if path != "" {
+		path = filepath.Clean(path)
+	}
+	c := FileConfiguration{
+		filename: filename,
+		path:     path,
+		paths:    paths,
+	}
+
+	return c
+}
+
+type FileConfiguration struct {
+	filename string
+	path     string
+	paths    []string
+}
+
+func (c FileConfiguration) GetViper() (*viper.Viper, error) {
+	v := viper.New()
+
+	// If a full path is specified, set the config file to that path
+	if c.path != "" {
+		fullPath := filepath.Join(c.path, c.filename)
+		v.SetConfigFile(fullPath)
+	} else {
+		configName, configType := c.getViperConfig()
+		v.SetConfigName(configName)
+		v.SetConfigType(configType)
+
+		for _, path := range c.paths {
+			v.AddConfigPath(path)
+		}
+	}
+	return v, v.ReadInConfig()
+}
+
+func (c FileConfiguration) getViperConfig() (string, string) {
+	var (
+		configName string
+		configType string
+	)
+
+	fileExtension := filepath.Ext(c.filename)
+	if fileExtension == "" {
+		configType = "yaml"
+	} else {
+		configType = strings.TrimPrefix(fileExtension, ".")
+	}
+
+	configName = strings.TrimSuffix(c.filename, fileExtension)
+
+	return configName, configType
 }
