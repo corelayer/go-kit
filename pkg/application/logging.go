@@ -53,7 +53,7 @@ func ParseLogFormat(format string) (LogFormat, bool) {
 	return f, ok
 }
 
-func ParseLevel(level string) (slog.Level, bool) {
+func ParseLogLevel(level string) (slog.Level, bool) {
 	switch level {
 	case "error":
 		return slog.LevelError, true
