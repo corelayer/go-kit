@@ -22,6 +22,40 @@ import (
 	"github.com/spf13/viper"
 )
 
+var Config *Configuration
+
+func RegisterEnvironment(prefix string, keys []string) error {
+	var (
+		err     error
+		eConfig EnvConfiguration
+		eViper  *viper.Viper
+	)
+
+	if eConfig, err = NewEnvConfiguration(prefix, keys); err != nil {
+		return err
+	}
+
+	if eViper, err = eConfig.GetViper(); err != nil {
+		return err
+	}
+	return Config.SetEnvironment(eViper)
+}
+
+func RegisterConfiguration(name string, filename string, searchPaths []string) error {
+	var (
+		err    error
+		fViper *viper.Viper
+	)
+	if Config.FileExists(name) {
+		return ErrFileConfigurationExists
+	}
+	c := NewFileConfiguration(filename, searchPaths)
+	if fViper, err = c.GetViper(); err != nil {
+		return err
+	}
+	return Config.SetFile(name, fViper)
+}
+
 func NewConfiguration() *Configuration {
 	return &Configuration{
 		files: make(map[string]*viper.Viper),
