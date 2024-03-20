@@ -49,6 +49,7 @@ func (s *HttpServer) RunServer(ctx context.Context) {
 	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
 	// Listen for signal notification and run start listening
+	slog.Debug("server starting", "address", s.Addr)
 	go s.shutdown(&serverCtx, serverStopCtx, &sig)
 	go s.listenAndServe()
 
@@ -63,29 +64,27 @@ func (s *HttpServer) shutdown(c *context.Context, cancelFunc context.CancelFunc,
 	shutdownCtx, cancel := context.WithTimeout(*c, 30*time.Second)
 	defer cancel()
 
-	go func() {
-		<-shutdownCtx.Done()
-		slog.Info("Server shutdown started")
-		if errors.Is(shutdownCtx.Err(), context.DeadlineExceeded) {
-			slog.Error("graceful shutdown timed out, forcing exit", "error", shutdownCtx.Err())
+	go func(ctx context.Context) {
+		<-ctx.Done()
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			slog.Error("graceful shutdown timed out", "address", s.Addr, "error", ctx.Err())
 			os.Exit(1)
 		}
-	}()
+	}(shutdownCtx)
 
+	slog.Debug("shutting down server", "address", s.Addr)
 	// Trigger graceful shutdown
 	err := s.Server.Shutdown(shutdownCtx)
 	if err != nil {
-		slog.Error("failure shutting down http server, forcing exit", "error", err)
-		os.Exit(1)
+		slog.Error("could not shutdown server", "address", s.Addr, "error", err)
 	}
 
+	// Call parent context cancel function to complete graceful exit
 	cancelFunc()
 }
 
 func (s *HttpServer) listenAndServe() {
-	err := s.ListenAndServe()
-	if err != nil && !errors.Is(err, http.ErrServerClosed) {
-		slog.Error("could not start httpServer", "error", err)
+	if err := s.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		slog.Error("could not start server", "address", s.Addr, "error", err)
 	}
-	slog.Info("server started", "listenAddress", s.Addr)
 }
