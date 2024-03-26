@@ -73,9 +73,9 @@ func (s *HttpServer) RunServer(ctx context.Context) {
 func (s *HttpServer) start() {
 	switch s.UseTls {
 	case true:
-		s.listenAndServe()
+		s.listenAndServeTls()
 	case false:
-		s.listenAndServerTls()
+		s.listenAndServe()
 	}
 
 }
@@ -120,7 +120,7 @@ func (s *HttpServer) listenAndServe() {
 	}
 }
 
-func (s *HttpServer) listenAndServerTls() {
+func (s *HttpServer) listenAndServeTls() {
 	slog.Info("server starting", "address", "https://"+s.Server.Addr)
 	if err := s.Server.ListenAndServeTLS(s.PublicKey, s.PrivateKey); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		slog.Error("could not start server", "address", s.Server.Addr, "error", err)
