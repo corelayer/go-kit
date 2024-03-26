@@ -87,7 +87,7 @@ func (s *HttpServer) shutdown(c *context.Context, cancelFunc context.CancelFunc,
 		}
 	}(shutdownCtx)
 
-	slog.Debug("shutting down server", "address", s.Server.Addr)
+	slog.Info("shutting down server", "address", s.Server.Addr)
 	// Trigger graceful shutdown
 	err := s.Server.Shutdown(shutdownCtx)
 	if err != nil {
