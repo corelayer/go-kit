@@ -64,7 +64,7 @@ func (s *HttpServer) RunServer(ctx context.Context) {
 	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
 	// Listen for signal notification and run start listening
-	slog.Debug("server starting", "address", "http://"+s.Server.Addr)
+	slog.Info("server starting", "address", "http://"+s.Server.Addr)
 	go s.shutdown(&serverCtx, serverStopCtx, &sig)
 	go s.listenAndServe()
 
