@@ -36,8 +36,23 @@ func NewHttpServer(address string, port int, handler http.Handler) *HttpServer {
 	}
 }
 
+func NewTlsHttpServer(address string, port int, pubKey string, privKey string, handler http.Handler) *HttpServer {
+	return &HttpServer{
+		Server: &http.Server{
+			Addr:    address + ":" + strconv.Itoa(port),
+			Handler: handler,
+		},
+		UseTls:     pubKey != "" && privKey != "",
+		PublicKey:  pubKey,
+		PrivateKey: privKey,
+	}
+}
+
 type HttpServer struct {
-	*http.Server
+	Server     *http.Server
+	UseTls     bool
+	PublicKey  string
+	PrivateKey string
 }
 
 func (s *HttpServer) RunServer(ctx context.Context) {
@@ -49,7 +64,7 @@ func (s *HttpServer) RunServer(ctx context.Context) {
 	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
 	// Listen for signal notification and run start listening
-	slog.Debug("server starting", "address", s.Addr)
+	slog.Debug("server starting", "address", "http://"+s.Server.Addr)
 	go s.shutdown(&serverCtx, serverStopCtx, &sig)
 	go s.listenAndServe()
 
@@ -67,16 +82,16 @@ func (s *HttpServer) shutdown(c *context.Context, cancelFunc context.CancelFunc,
 	go func(ctx context.Context) {
 		<-ctx.Done()
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			slog.Error("graceful shutdown timed out", "address", s.Addr, "error", ctx.Err())
+			slog.Error("graceful shutdown timed out", "address", s.Server.Addr, "error", ctx.Err())
 			os.Exit(1)
 		}
 	}(shutdownCtx)
 
-	slog.Debug("shutting down server", "address", s.Addr)
+	slog.Debug("shutting down server", "address", s.Server.Addr)
 	// Trigger graceful shutdown
 	err := s.Server.Shutdown(shutdownCtx)
 	if err != nil {
-		slog.Error("could not shutdown server", "address", s.Addr, "error", err)
+		slog.Error("could not shutdown server", "address", s.Server.Addr, "error", err)
 	}
 
 	// Call parent context cancel function to complete graceful exit
@@ -84,7 +99,13 @@ func (s *HttpServer) shutdown(c *context.Context, cancelFunc context.CancelFunc,
 }
 
 func (s *HttpServer) listenAndServe() {
-	if err := s.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		slog.Error("could not start server", "address", s.Addr, "error", err)
+	if err := s.Server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		slog.Error("could not start server", "address", s.Server.Addr, "error", err)
+	}
+}
+
+func (s *HttpServer) listenAndServerTls() {
+	if err := s.Server.ListenAndServeTLS(s.PublicKey, s.PrivateKey); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		slog.Error("could not start server", "address", s.Server.Addr, "error", err)
 	}
 }
