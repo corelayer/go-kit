@@ -63,35 +63,50 @@ func (s *HttpServer) RunServer(ctx context.Context) {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
-	// Listen for signal notification and run start listening
-	slog.Info("server starting", "address", "http://"+s.Server.Addr)
 	go s.shutdown(&serverCtx, serverStopCtx, &sig)
-	go s.listenAndServe()
+	go s.start()
 
 	// Wait for server context to be stopped
 	<-serverCtx.Done()
 }
 
+func (s *HttpServer) start() {
+	switch s.UseTls {
+	case true:
+		s.listenAndServe()
+	case false:
+		s.listenAndServerTls()
+	}
+
+}
+
 func (s *HttpServer) shutdown(c *context.Context, cancelFunc context.CancelFunc, sig *chan os.Signal) {
 	<-*sig
+	var protocol string
+	switch s.UseTls {
+	case true:
+		protocol = "https://"
+	case false:
+		protocol = "http://"
+	}
 
 	// Shutdown signal with grace period of 30 seconds
 	shutdownCtx, cancel := context.WithTimeout(*c, 30*time.Second)
 	defer cancel()
 
-	go func(ctx context.Context) {
+	go func(ctx context.Context, address string) {
 		<-ctx.Done()
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			slog.Error("graceful shutdown timed out", "address", s.Server.Addr, "error", ctx.Err())
+			slog.Error("graceful shutdown timed out", "address", address, "error", ctx.Err())
 			os.Exit(1)
 		}
-	}(shutdownCtx)
+	}(shutdownCtx, protocol+s.Server.Addr)
 
-	slog.Info("shutting down server", "address", s.Server.Addr)
+	slog.Info("shutting down server", "address", protocol+s.Server.Addr)
 	// Trigger graceful shutdown
 	err := s.Server.Shutdown(shutdownCtx)
 	if err != nil {
-		slog.Error("could not shutdown server", "address", s.Server.Addr, "error", err)
+		slog.Error("could not shutdown server", "address", protocol+s.Server.Addr, "error", err)
 	}
 
 	// Call parent context cancel function to complete graceful exit
@@ -99,12 +114,14 @@ func (s *HttpServer) shutdown(c *context.Context, cancelFunc context.CancelFunc,
 }
 
 func (s *HttpServer) listenAndServe() {
+	slog.Info("server starting", "address", "http://"+s.Server.Addr)
 	if err := s.Server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		slog.Error("could not start server", "address", s.Server.Addr, "error", err)
 	}
 }
 
 func (s *HttpServer) listenAndServerTls() {
+	slog.Info("server starting", "address", "https://"+s.Server.Addr)
 	if err := s.Server.ListenAndServeTLS(s.PublicKey, s.PrivateKey); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		slog.Error("could not start server", "address", s.Server.Addr, "error", err)
 	}
