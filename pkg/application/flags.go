@@ -33,3 +33,7 @@ func AddLogLevelFlag(cmd *cobra.Command, f *LogFlags, p LogParams) {
 func AddLogFormatFlag(cmd *cobra.Command, f *LogFlags, p LogParams) {
 	cmd.PersistentFlags().StringVarP(&f.Format, p.Format.Name, p.Format.Shorthand, p.Format.Value, p.Format.Usage)
 }
+
+func AddTuiInteractiveFlag(cmd *cobra.Command, f *TuiFlags, p TuiParams) {
+	cmd.PersistentFlags().BoolVarP(&f.Interactive, p.Interactive.Name, p.Interactive.Shorthand, p.Interactive.Value, p.Interactive.Usage)
+}
