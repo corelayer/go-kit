@@ -26,7 +26,7 @@ import (
 
 var Config *Configuration
 
-func RegisterEnvironment(prefix string, keys []string) error {
+func RegisterEnvironment(name string, prefix string, keys []string) error {
 	var (
 		err     error
 		eConfig EnvConfiguration
@@ -40,7 +40,7 @@ func RegisterEnvironment(prefix string, keys []string) error {
 	if eViper, err = eConfig.GetViper(); err != nil {
 		return err
 	}
-	return Config.SetEnvironment(eViper)
+	return Config.SetEnvironment(name, eViper)
 }
 
 func RegisterConfiguration(name string, filename string, searchPaths []string) error {
@@ -76,19 +76,18 @@ func NewConfiguration() *Configuration {
 }
 
 type Configuration struct {
-	env   *viper.Viper
+	env   map[string]*viper.Viper
 	files map[string]*viper.Viper
 	mux   sync.Mutex
 }
 
-func (c *Configuration) GetEnv() (*viper.Viper, error) {
-	c.mux.Lock()
-	defer c.mux.Unlock()
-
-	if c.env == nil {
+func (c *Configuration) GetEnv(name string) (*viper.Viper, error) {
+	if !c.EnvExists(name) {
 		return nil, ErrEnvConfigurationNotLoaded
 	}
-	return c.env, nil
+	c.mux.Lock()
+	defer c.mux.Unlock()
+	return c.env[name], nil
 }
 
 func (c *Configuration) GetFile(name string) (*viper.Viper, error) {
@@ -100,13 +99,14 @@ func (c *Configuration) GetFile(name string) (*viper.Viper, error) {
 	return c.files[name], nil
 }
 
-func (c *Configuration) SetEnvironment(v *viper.Viper) error {
-	if c.env != nil {
+func (c *Configuration) SetEnvironment(name string, v *viper.Viper) error {
+	if c.EnvExists(name) {
 		return ErrEnvConfigurationAlreadyLoaded
 	}
+
 	c.mux.Lock()
 	defer c.mux.Unlock()
-	c.env = v
+	c.env[name] = v
 	return nil
 }
 
@@ -119,6 +119,13 @@ func (c *Configuration) SetFile(name string, v *viper.Viper) error {
 
 	c.files[name] = v
 	return v.ReadInConfig()
+}
+
+func (c *Configuration) EnvExists(name string) bool {
+	c.mux.Lock()
+	defer c.mux.Unlock()
+	_, found := c.env[name]
+	return found
 }
 
 func (c *Configuration) FileExists(name string) bool {
