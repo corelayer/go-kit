@@ -70,6 +70,7 @@ type ConfigFileParams struct {
 
 func NewConfiguration() *Configuration {
 	return &Configuration{
+		env:   make(map[string]*viper.Viper),
 		files: make(map[string]*viper.Viper),
 		mux:   sync.Mutex{},
 	}
