@@ -23,10 +23,11 @@ import (
 )
 
 type Version struct {
-	SemVer string
-	Commit string
-	Date   string
-	RunE   func(v *Version) error
+	SemVer  string
+	Commit  string
+	Date    string
+	Channel string
+	RunE    func(v *Version) error
 }
 
 func (v *Version) Command() *cobra.Command {
